@@ -7,6 +7,7 @@ from mmengine.registry import MODELS
 import datasets.AsphaltDataset
 import cv2
 import numpy as np
+import torch
 
 #
 # config_file = 'pspnet_r50-d8_4xb2-40k_cityscapes-512x1024.py'
@@ -37,15 +38,14 @@ if __name__ == "__main__":
     # 构建 Runner
     runner = Runner.from_cfg(cfg)
 
-    # 在替换前保存原始 train_step
+    # 保存原始的 train_step 方法（如果后续需要参考真实逻辑，可保留）
     orig_train_step = runner.model.train_step
 
-    # 保存原始的 train_step 方法
-    orig_train_step = runner.model.train_step
+    import torch
 
 
-    def debug_train_step(self, data_batch, optim_wrapper):
-        print("🟢 Debug train_step called")
+    def debug_train_step_dummy(self, data_batch, optim_wrapper):
+        print("🟢 Debug train_step (dummy) called")
         print(f"data_batch keys: {data_batch.keys()}")
         inputs = data_batch['inputs']
         print(f"inputs type: {type(inputs)}")
@@ -56,15 +56,28 @@ if __name__ == "__main__":
         print(f"data_samples type: {type(data_samples)}")
         print(f"First gt_sem_seg shape: {data_samples[0].gt_sem_seg.data.shape}")
 
-        print("==> Before forward/backward in train_step")
-        result = orig_train_step(data_batch, optim_wrapper)
-        print("==> After forward/backward in train_step")
-        return result
+        # 获取模型设备
+        device = next(self.parameters()).device
+
+        # 构造平展的 dummy loss 字典，每个值直接是一个 scalar tensor
+        loss_seg = torch.tensor(0.0, device=device)
+        loss_aux = torch.tensor(0.0, device=device)
+        dummy_loss = {
+            'loss_seg': loss_seg,
+            'loss_aux': loss_aux,
+            'loss': loss_seg + loss_aux  # 通常需要提供总 loss
+        }
+
+        print("==> Return dummy loss, skipping forward/backward")
+        return dummy_loss
 
 
-    runner.model.train_step = debug_train_step.__get__(runner.model, type(runner.model))
+    # 使用 dummy loss 的 train_step 替换原始方法
+    # runner.model.train_step = debug_train_step_dummy.__get__(runner.model, type(runner.model))
 
+    # 输出模型所在设备（从模型参数中获取设备信息）
     model_device = next(runner.model.parameters()).device
+    print("Model device:", model_device)
 
     # 开始训练
     runner.train()
