@@ -40,23 +40,31 @@ if __name__ == "__main__":
     # 在替换前保存原始 train_step
     orig_train_step = runner.model.train_step
 
+    # 保存原始的 train_step 方法
+    orig_train_step = runner.model.train_step
+
 
     def debug_train_step(self, data_batch, optim_wrapper):
-        print('🟢 Debug train_step called')
-        print(f'data_batch keys: {data_batch.keys()}')
+        print("🟢 Debug train_step called")
+        print(f"data_batch keys: {data_batch.keys()}")
         inputs = data_batch['inputs']
-        print(f'inputs type: {type(inputs)}')
-        print(f'Number of samples: {len(inputs)}')
+        print(f"inputs type: {type(inputs)}")
+        print(f"Number of samples: {len(inputs)}")
         if isinstance(inputs, list) and len(inputs) > 0:
-            print(f'First input shape: {inputs[0].shape}')
+            print(f"First input shape: {inputs[0].shape}")
         data_samples = data_batch['data_samples']
-        print(f'data_samples type: {type(data_samples)}')
-        print(f'First gt_sem_seg shape: {data_samples[0].gt_sem_seg.data.shape}')
-        # 调用原始的 train_step 方法
-        return orig_train_step(data_batch, optim_wrapper)
+        print(f"data_samples type: {type(data_samples)}")
+        print(f"First gt_sem_seg shape: {data_samples[0].gt_sem_seg.data.shape}")
+
+        print("==> Before forward/backward in train_step")
+        result = orig_train_step(data_batch, optim_wrapper)
+        print("==> After forward/backward in train_step")
+        return result
 
 
     runner.model.train_step = debug_train_step.__get__(runner.model, type(runner.model))
+
+    model_device = next(runner.model.parameters()).device
 
     # 开始训练
     runner.train()
